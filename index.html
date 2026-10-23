@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cooler Maintenance Daily Log</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#f4f7f9;--card:#fff;--text:#1b2a34;--muted:#64767f;--line:#d9e2e8;--accent:#0b7a9e;--accent-t:#fff;--ok:#1f8a4c;--warn:#c27a00;--bad:#c23a3a;--chip:#e8f1f5}
+@media (prefers-color-scheme:dark){:root{--bg:#111a20;--card:#1a262e;--text:#e6eef2;--muted:#8fa3ad;--line:#2b3b45;--accent:#3bb4d9;--accent-t:#06232d;--ok:#4cc380;--warn:#e8a93a;--bad:#ef6b6b;--chip:#23333c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 2px}h2{font-size:16px;margin:0 0 12px}h3{font-size:14px;margin:6px 0 0;color:var(--accent)}
+.sub{color:var(--muted);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.full{grid-column:1/-1}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+input[readonly]{opacity:.8;font-weight:700}
+textarea{min-height:70px;resize:vertical}
+button{font:inherit;border:0;border-radius:8px;padding:11px 16px;background:var(--accent);color:var(--accent-t);font-weight:600;cursor:pointer}
+button:disabled{opacity:.6}
+button.ghost{background:var(--chip);color:var(--text)}
+button.small{padding:6px 10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:20px}.stat span{font-size:12px;color:var(--muted)}
+.rec{border-top:1px solid var(--line);padding:12px 0}
+.rec:first-child{border-top:0}
+.rec .top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--chip);margin:2px 4px 2px 0}
+.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-bad{color:var(--bad)}
+.meta{color:var(--muted);font-size:13px}
+.msg{padding:10px 12px;border-radius:8px;background:var(--chip);margin-bottom:12px}
+.hide{display:none}
+.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+@media(max-width:560px){.filters{grid-template-columns:1fr}}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.bar{display:flex;align-items:center;gap:8px;margin:6px 0}
+.bl{width:150px;font-size:13px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt{flex:1;background:var(--chip);border-radius:6px;height:14px;overflow:hidden}
+.bf{height:100%;border-radius:6px}
+.cols{display:flex;gap:3px;height:150px;align-items:stretch}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-size:10px;color:var(--muted);text-align:center}
+.cv{width:70%;background:var(--accent);border-radius:4px 4px 0 0}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:12px}
+@media print{.noprint{display:none!important}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+<main>
+<h1>❄️ Cooler Maintenance Daily Log</h1>
+<p class="sub">Technicians log each visit. Records are saved to the company Google Sheet.</p>
+
+<div id="pinCard" class="card hide">
+  <h2>Enter team PIN</h2>
+  <div class="row"><input id="pin" type="password" inputmode="numeric" placeholder="Team PIN" style="max-width:220px"><button id="pinGo">Open</button></div>
+  <p id="pinErr" class="meta"></p>
+</div>
+
+<div id="app" class="hide">
+<div id="notice" class="msg hide"></div>
+<div class="tabs noprint"><button id="tabLog">Log visits</button><button id="tabDash" class="ghost">Dashboard</button></div>
+
+<div id="logView">
+<div class="stats">
+  <div class="stat"><b id="sToday">0</b><span>Visits today</span></div>
+  <div class="stat"><b id="sCoolers">0</b><span>Coolers today</span></div>
+  <div class="stat"><b id="sHours">0</b><span>Hours today</span></div>
+  <div class="stat"><b id="sCharged">0</b><span>Charged today</span></div>
+</div>
+
+<div class="card">
+  <h2 id="formTitle">New visit record</h2>
+  <div class="grid">
+    <div><label>Date</label><input type="date" id="date"></div>
+    <div><label>Technician (-DIS = service outside own area)</label><select id="tech"></select></div>
+    <div><label>Customer ID</label><input id="custId"></div>
+    <div><label>Customer type</label><select id="custType"></select></div>
+    <div><label>Complaint number</label><input id="complaintNo"></div>
+    <div><label>Job number</label><input id="jobNo"></div>
+    <div><label>Work type</label><select id="wtype"></select></div>
+    <div><label>Status after visit</label><select id="status"></select></div>
+    <div><label>Time spent (hours)</label><input type="number" step="0.25" min="0" id="hours" inputmode="decimal"></div>
+
+    <div class="full"><h3>Coolers</h3></div>
+    <div><label>Number of coolers</label><input type="number" min="0" id="coolers" inputmode="numeric"></div>
+    <div><label>FOC coolers</label><input type="number" min="0" id="foc" inputmode="numeric"></div>
+    <div id="focWrap" class="full hide"><label>Reason for FOC service</label><select id="focReason"></select></div>
+    <div><label>Chargeable coolers</label><input type="number" min="0" id="chargeable" inputmode="numeric"></div>
+
+    <div class="full"><h3>Charges</h3></div>
+    <div><label>Visiting charges</label><input type="number" min="0" step="0.01" id="visitCharge" inputmode="decimal"></div>
+    <div><label>Service charges</label><input type="number" min="0" step="0.01" id="serviceCharge" inputmode="decimal"></div>
+    <div><label>Spare parts charges</label><input type="number" min="0" step="0.01" id="spareCharge" inputmode="decimal"></div>
+    <div><label>TR rental</label><input type="number" min="0" step="0.01" id="trRental" inputmode="decimal"></div>
+    <div><label>Total charged (auto)</label><input id="totalCharged" readonly></div>
+
+    <div class="full"><h3>Parts replaced</h3>
+      <div id="partRows" style="margin-top:8px"></div>
+      <div class="row"><button class="ghost small" id="addPart" type="button">+ Add part</button><span id="partsTotal" class="meta"></span></div></div>
+
+    <div class="full"><label>Issues found</label><textarea id="issues"></textarea></div>
+    <div class="full"><label>Notes</label><textarea id="notes"></textarea></div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button id="save">Save record</button>
+    <button class="ghost hide" id="cancel">Cancel edit</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Import from Excel / CSV</h2>
+  <p class="meta" style="margin-top:-6px">Upload a .xlsx, .xls or .csv file (first sheet is used). Required columns: Date, Technician, Customer ID. Download the template for all columns. In the Parts column write BIMETAL:2:500; WIRE:1:200 (part:quantity:unit cost).</p>
+  <div class="row"><input type="file" id="impFile" accept=".xlsx,.xls,.csv" style="max-width:320px"><button class="ghost small" id="impTpl">Download template</button></div>
+  <p id="impMsg" class="meta"></p>
+  <div class="tw" id="impPrev"></div>
+  <button id="impGo" class="hide" style="margin-top:10px">Import records</button>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-bottom:10px">
+    <h2 style="margin:0">Records <span id="count" class="meta"></span></h2>
+    <div class="row"><button class="ghost small" id="refresh">Refresh</button><button class="ghost small" id="export">Export CSV</button></div>
+  </div>
+  <div class="filters">
+    <input type="date" id="fDate" title="Filter by date">
+    <select id="fTech"><option value="">All technicians</option></select>
+    <input id="fSearch" placeholder="Search customer, complaint, job no.">
+  </div>
+  <button class="ghost small" id="clear" style="margin-bottom:8px">Clear filters</button>
+  <div id="list"></div>
+</div>
+</div>
+
+<div id="dashView" class="hide">
+  <div class="card">
+    <div class="row noprint" style="justify-content:space-between">
+      <div class="row" id="pTabs"><button class="small" data-p="day">Daily</button><button class="small ghost" data-p="week">Weekly</button><button class="small ghost" data-p="month">Monthly</button></div>
+      <div class="row"><button class="ghost small" id="pPrev">‹</button><input type="date" id="pDate" style="width:auto"><button class="ghost small" id="pNext">›</button><button class="ghost small" id="pPrint">Print / PDF</button></div>
+    </div>
+    <h2 id="pLabel" style="margin:10px 0 0"></h2>
+  </div>
+  <div class="stats" id="dStats"></div>
+  <div class="card" id="dTrendCard"><h2>Visits per day</h2><div id="dTrend"></div></div>
+  <div class="card"><h2>By technician</h2><div class="tw" id="dTech"></div></div>
+  <div class="card"><h2>DIS services (outside own area, extra incentive)</h2><div class="tw" id="dDis"></div></div>
+  <div class="card"><h2>Status after visit</h2><div id="dStatus"></div></div>
+  <div class="card"><h2>Customer type</h2><div id="dType"></div></div>
+  <div class="card"><h2>FOC coolers by reason</h2><div id="dFoc"></div></div>
+  <div class="card"><h2>Charges</h2><div class="tw" id="dCharges"></div></div>
+  <div class="card"><h2>Parts used</h2><div class="tw" id="dParts"></div></div>
+  <div class="card"><h2>Customers with open issues</h2><p class="meta" style="margin-top:-8px">Latest visit per customer in this period ended as Out of Order TR, Out of Order PR or After Repair Pending.</p><div class="tw" id="dOpen"></div></div>
+</div>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ====== PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ======
+var API_URL = "PASTE_WEB_APP_URL_HERE";
+// ============================================================
+(function(){
+  var STATUSES=["Cooler Service Done","Working - No Fault Found","Out of Order TR","Out of Order PR","After Repair Pending","On the Spot Repair"];
+  var OPEN=["Out of Order TR","Out of Order PR","After Repair Pending"];
+  var CTYPES=["Household","SME","Corporate","Diplomatic","Ex-Staff","Foreigners","Government","Religion Sector","Staff","American Group","Competitor","Cooler Only"];
+  var FOCR=["Warranty Cooler","Rental","TR","Service Agreement","Product Complaint","Corporate Agreement","Other"];
+  var TECHS=["AMILA","AMILA-DIS","BUDHIKA","BUDHIKA-DIS","CB WASANTHA","CB WASANTHA-DIS","CHAMITHA","CHAMITHA-DIS","KALUAARACHI","KALUAARACHI-DIS","KU WASANTHA","KU WASANTHA-DIS","ROHITHA","ROHITHA-DIS","SHAN","SHAN-DIS"];
+  var WT=["Preventive maintenance","Repair","Cleaning","Inspection","Installation","Relocation","Removal / pickup"];
+  var PARTS=["BIMETAL","BOTTLE GUARD","COLD TANK","COOLING CARD","D.C.FAN","ELECTRONIC CARD","HEATER TANK","INHELAR","NON RETURN VALVE","OVERLOAD SWITCH","PLUG TOP","RELAY CONTRACTOR","RUBBER HOSE","TAP SPRING","THERMOSTAT","TOP COVER","SWITCH","WIRE","TAP","INSIDE TAP"];
+  var COLS=["date","tech","custId","custType","complaintNo","jobNo","wtype","status","hours","coolers","foc","focReason","chargeable","visitCharge","serviceCharge","spareCharge","trRental","totalCharged","parts","issues","notes"];
+  var HEAD=["Date","Technician","Customer ID","Customer Type","Complaint Number","Job Number","Work Type","Status","Hours","Number of Coolers","FOC Coolers","FOC Reason","Chargeable Coolers","Visiting Charges","Service Charges","Spare Parts Charges","TR Rental","Total Charged","Parts","Issues","Notes"];
+  var FIELDS=COLS.filter(function(k){return k!=="parts"});
+  var NUMF=["hours","coolers","foc","chargeable","visitCharge","serviceCharge","spareCharge","trRental","totalCharged"];
+  var CH=["visitCharge","serviceCharge","spareCharge","trRental"];
+  var SELS=["tech","custType","wtype","status","focReason"];
+
+  var $=function(id){return document.getElementById(id)};
+  var pin="",records=[],editingId=null;
+  function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+  function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+  function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
+  function pad(n){return String(n).padStart(2,"0")}
+  function fmt(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
+  function parseD(s){var p=s.split("-");return new Date(+p[0],+p[1]-1,+p[2])}
+  function today(){return fmt(new Date())}
+  function esc(s){var d=document.createElement("div");d.textContent=s==null?"":String(s);return d.innerHTML}
+  function n(v){return Number(v)||0}
+  function str(v){return String(v==null?"":v).trim()}
+  function m(v){return (Math.round(n(v)*100)/100).toLocaleString()}
+  function note(t){var e=$("notice");e.textContent=t;e.classList.toggle("hide",!t)}
+  function sum(rs,k){return rs.reduce(function(a,r){return a+n(r[k])},0)}
+  function sc(s){return OPEN.indexOf(s)<0?"ok":(s==="After Repair Pending"?"warn":"bad")}
+
+  function call(method,payload){
+    if(API_URL.indexOf("PASTE_")===0) return Promise.reject(new Error("API_URL has not been set in index.html"));
+    var p=method==="GET"
+      ?fetch(API_URL+"?pin="+encodeURIComponent(pin)+"&t="+Date.now())
+      :fetch(API_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(Object.assign({pin:pin},payload))});
+    return p.then(function(r){return r.json()}).then(function(j){if(!j.ok)throw new Error(j.error||"Request failed");return j});
+  }
+
+  /* ---------- Form ---------- */
+  function fillSel(id,arr,blank){$(id).innerHTML=(blank?'<option value="">Select…</option>':'')+arr.map(function(x){return '<option>'+esc(x)+'</option>'}).join("")}
+  fillSel("tech",TECHS,1);fillSel("custType",CTYPES,1);fillSel("wtype",WT);fillSel("status",STATUSES);fillSel("focReason",FOCR,1);
+  function setSel(id,v){var s=$(id);if(v&&!Array.prototype.some.call(s.options,function(o){return o.value===v}))s.add(new Option(v));s.value=v}
+
+  function parseParts(s){return str(s)?str(s).split(";").map(function(x){var a=x.trim().split(":");return {name:str(a[0]),qty:n(a[1]),cost:n(a[2])}}).filter(function(p){return p.name}):[]}
+  function partsCost(a){return a.reduce(function(t,p){return t+p.qty*p.cost},0)}
+  function getParts(){var o=[];document.querySelectorAll(".prow").forEach(function(d){var q=n(d.querySelector(".pq").value);if(q>0)o.push(d.querySelector(".pn").value+":"+q+":"+n(d.querySelector(".pc").value))});return o.join("; ")}
+  function calcParts(){$("partsTotal").textContent="Parts total: "+m(partsCost(parseParts(getParts())))}
+  function calcTotal(){$("totalCharged").value=CH.reduce(function(a,k){return a+n($(k).value)},0)}
+  function focToggle(){$("focWrap").classList.toggle("hide",!(n($("foc").value)>0))}
+  function addPart(p){
+    var d=document.createElement("div");d.className="row prow";d.style.marginBottom="6px";
+    d.innerHTML='<select class="pn" style="flex:2;min-width:150px">'+PARTS.map(function(x){return '<option>'+esc(x)+'</option>'}).join("")+'</select><input class="pq" type="number" min="1" placeholder="Qty" style="flex:1;min-width:70px"><input class="pc" type="number" min="0" step="0.01" placeholder="Unit cost" style="flex:1;min-width:90px"><button class="ghost small" type="button">✕</button>';
+    var sel=d.querySelector(".pn");
+    if(p){if(PARTS.indexOf(p.name)<0)sel.add(new Option(p.name));sel.value=p.name;d.querySelector(".pq").value=p.qty;d.querySelector(".pc").value=p.cost}
+    d.querySelector("button").onclick=function(){d.remove();calcParts()};
+    d.oninput=calcParts;$("partRows").appendChild(d);
+  }
+  $("addPart").onclick=function(){addPart()};
+  CH.forEach(function(k){$(k).oninput=calcTotal});
+  $("foc").oninput=focToggle;
+  $("date").value=today();setSel("tech",lsGet("tech")||"");calcParts();
+
+  function resetForm(){
+    editingId=null;$("formTitle").textContent="New visit record";$("cancel").classList.add("hide");
+    FIELDS.forEach(function(k){if(k!=="tech")$(k).value=""});
+    $("date").value=today();$("wtype").selectedIndex=0;$("status").selectedIndex=0;
+    $("partRows").innerHTML="";calcTotal();calcParts();focToggle();
+  }
+  $("cancel").onclick=resetForm;
+
+  $("save").onclick=function(){
+    var rec={parts:getParts()};
+    FIELDS.forEach(function(k){var v=$(k).value.trim();rec[k]=NUMF.indexOf(k)>=0?n(v):v});
+    if(!rec.date||!rec.tech||!rec.custId||!rec.custType){alert("Please fill in date, technician, customer ID and customer type.");return}
+    if(rec.foc>0&&!rec.focReason){alert("Please select the reason for FOC service.");return}
+    if(rec.foc+rec.chargeable>rec.coolers&&!confirm("FOC plus chargeable coolers is more than the number of coolers. Save anyway?"))return;
+    lsSet("tech",rec.tech);
+    var btn=$("save");btn.disabled=true;btn.textContent="Saving…";
+    call("POST",editingId?{action:"update",id:editingId,record:rec}:{action:"add",record:rec})
+      .then(function(){resetForm();return load()})
+      .catch(function(e){note("Could not save: "+e.message)})
+      .then(function(){btn.disabled=false;btn.textContent="Save record"});
+  };
+
+  /* ---------- Load & list ---------- */
+  function load(){
+    return call("GET").then(function(j){
+      records=(j.records||[]).map(function(r){
+        r.custId=str(r.custId);r.complaintNo=str(r.complaintNo);r.jobNo=str(r.jobNo);r.date=str(r.date);
+        NUMF.forEach(function(k){r[k]=n(r[k])});return r});
+      records.sort(function(a,b){return a.date===b.date?String(b.timestamp).localeCompare(String(a.timestamp)):(a.date<b.date?1:-1)});
+      note("");render();renderDash();
+    }).catch(function(e){
+      if(/PIN/.test(e.message)){lsDel("pin");showPin("Wrong PIN, try again.");return}
+      note("Could not load records: "+e.message);
+    });
+  }
+  function showPin(err){$("app").classList.add("hide");$("pinCard").classList.remove("hide");$("pinErr").textContent=err||""}
+  function showApp(){$("pinCard").classList.add("hide");$("app").classList.remove("hide")}
+  $("pinGo").onclick=function(){pin=$("pin").value.trim();if(!pin)return;lsSet("pin",pin);showApp();load()};
+  $("pin").onkeydown=function(e){if(e.key==="Enter")$("pinGo").click()};
+
+  function filtered(){
+    var d=$("fDate").value,t=$("fTech").value,q=$("fSearch").value.toLowerCase();
+    return records.filter(function(r){
+      if(d&&r.date!==d)return false;if(t&&r.tech!==t)return false;
+      if(q&&(r.custId+" "+r.complaintNo+" "+r.jobNo+" "+r.issues+" "+r.notes).toLowerCase().indexOf(q)<0)return false;
+      return true});
+  }
+  function render(){
+    var td=records.filter(function(r){return r.date===today()});
+    $("sToday").textContent=td.length;$("sCoolers").textContent=sum(td,"coolers");
+    $("sHours").textContent=Math.round(sum(td,"hours")*100)/100;$("sCharged").textContent=m(sum(td,"totalCharged"));
+    var sel=$("fTech"),cur=sel.value,names=Array.from(new Set(records.map(function(r){return r.tech}))).sort();
+    sel.innerHTML='<option value="">All technicians</option>'+names.map(function(x){return '<option>'+esc(x)+'</option>'}).join("");sel.value=cur;
+    var rs=filtered();$("count").textContent="("+rs.length+")";
+    $("list").innerHTML=rs.length?rs.map(function(r){
+      var ps=parseParts(r.parts);
+      return '<div class="rec"><div class="top"><div><b>Customer '+esc(r.custId)+'</b> <span class="tag">'+esc(r.custType)+'</span></div><div class="c-'+sc(r.status)+'"><b>'+esc(r.status)+'</b></div></div>'
+      +'<div class="meta">'+esc(r.date)+' · '+esc(r.tech)+(isDis(r.tech)?' <span class="tag">DIS</span>':'')+' · '+esc(r.wtype)+(r.hours?' · '+esc(r.hours)+' h':'')+'</div>'
+      +'<div class="meta">Complaint no. '+esc(r.complaintNo||"–")+' · Job no. '+esc(r.jobNo||"–")+'</div>'
+      +'<div>Coolers <b>'+r.coolers+'</b> · FOC <b>'+r.foc+'</b>'+(r.foc&&r.focReason?' ('+esc(r.focReason)+')':'')+' · Chargeable <b>'+r.chargeable+'</b></div>'
+      +(r.totalCharged?'<div>Total charged <b>'+m(r.totalCharged)+'</b> <span class="meta">(visiting '+m(r.visitCharge)+', service '+m(r.serviceCharge)+', spare parts '+m(r.spareCharge)+', TR rental '+m(r.trRental)+')</span></div>':'')
+      +(ps.length?'<div>'+ps.map(function(p){return '<span class="tag">'+esc(p.name)+' ×'+p.qty+' @ '+m(p.cost)+'</span>'}).join("")+'</div>':'')
+      +(r.issues?'<div><span class="meta">Issues:</span> '+esc(r.issues)+'</div>':'')
+      +(r.notes?'<div><span class="meta">Notes:</span> '+esc(r.notes)+'</div>':'')
+      +'<div class="row" style="margin-top:6px"><button class="ghost small" data-e="'+esc(r.id)+'">Edit</button><button class="ghost small" data-d="'+esc(r.id)+'">Delete</button></div></div>'
+    }).join(""):'<p class="meta">No records yet.</p>';
+  }
+  $("list").onclick=function(e){
+    var ed=e.target.dataset.e,de=e.target.dataset.d;
+    if(ed){var r=records.find(function(x){return x.id===ed});if(!r)return;editingId=ed;
+      $("formTitle").textContent="Editing record";$("cancel").classList.remove("hide");
+      FIELDS.forEach(function(k){var v=r[k];if(SELS.indexOf(k)>=0)setSel(k,str(v));else $(k).value=(v===0||v==null)?"":v});
+      $("partRows").innerHTML="";parseParts(r.parts).forEach(addPart);calcParts();focToggle();
+      window.scrollTo({top:0,behavior:"smooth"})}
+    if(de){var ap=prompt("Supervisor PIN needed to delete this record:");if(!ap)return;
+      call("POST",{action:"delete",id:de,adminPin:ap}).then(load).catch(function(x){note("Could not delete: "+x.message)})}
+  };
+  ["fDate","fTech","fSearch"].forEach(function(i){$(i).oninput=render});
+  $("clear").onclick=function(){$("fDate").value="";$("fTech").value="";$("fSearch").value="";render()};
+  $("refresh").onclick=load;
+  function download(name,text){var a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+text],{type:"text/csv"}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+  $("export").onclick=function(){
+    var rs=filtered();if(!rs.length){alert("No records to export.");return}
+    download("cooler-visits-"+today()+".csv",[HEAD.join(",")].concat(rs.map(function(r){return COLS.map(function(c){return '"'+str(r[c]).replace(/"/g,'""')+'"'}).join(",")})).join("\n"));
+  };
+
+  /* ---------- Import ---------- */
+  var ALIAS={date:["date","visit date"],tech:["technician","technician name","tech","engineer"],
+    custId:["customer id","customer","customer no","customer code","outlet"],custType:["customer type"],
+    complaintNo:["complaint number","complaint no","complaint"],jobNo:["job number","job no","job"],
+    wtype:["work type","job type"],status:["status","status after visit"],hours:["hours","time spent","time spent (hours)","hrs"],
+    coolers:["number of coolers","no of coolers","coolers","cooler count"],foc:["foc coolers","foc","foc cooler count"],
+    focReason:["foc reason","reason for foc service","reason for foc"],chargeable:["chargeable coolers","chargeable cooler count","chargeable"],
+    visitCharge:["visiting charges","visiting charge"],serviceCharge:["service charges","service charge"],
+    spareCharge:["spare parts charges","spare parts charge","spare charges"],trRental:["tr rental"],totalCharged:["total charged","total"],
+    parts:["parts","parts replaced"],issues:["issues","issues found","issue","problem"],notes:["notes","remarks","comments"]};
+  var pending=[];
+  function impMsg(t){$("impMsg").textContent=t}
+  function normKey(s){return String(s).toLowerCase().replace(/\s+/g," ").trim()}
+  function pick(v,list){var s=str(v).toLowerCase();for(var i=0;i<list.length;i++)if(list[i].toLowerCase()===s)return list[i];return ""}
+  function toDate(v){
+    if(v instanceof Date&&!isNaN(v))return fmt(new Date(v.getTime()+12*36e5));
+    var s=str(v);if(!s)return "";
+    var x=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(x)return x[1]+"-"+pad(+x[2])+"-"+pad(+x[3]);
+    x=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);if(x){var y=+x[3];if(y<100)y+=2000;return y+"-"+pad(+x[2])+"-"+pad(+x[1])}
+    if(/^\d+(\.\d+)?$/.test(s)&&+s>20000){var u=new Date(Math.round((+s-25569)*864e5));return u.getUTCFullYear()+"-"+pad(u.getUTCMonth()+1)+"-"+pad(u.getUTCDate())}
+    var p=Date.parse(s);return isNaN(p)?"":fmt(new Date(p));
+  }
+  function normStatus(v){
+    var s=str(v).toLowerCase(),e=pick(v,STATUSES);if(e)return e;
+    if(s.indexOf("pending")>=0)return "After Repair Pending";if(s.indexOf("spot")>=0)return "On the Spot Repair";
+    if(s.indexOf("fault")>=0||s.indexOf("working")>=0)return "Working - No Fault Found";
+    if(/\btr\b/.test(s))return "Out of Order TR";if(/\bpr\b/.test(s))return "Out of Order PR";
+    return "Cooler Service Done";
+  }
+  function normTech(v){var s=str(v).replace(/\s*-\s*/g,"-").replace(/\s+/g," ").toUpperCase();return pick(s,TECHS)||s}
+  function isDis(v){return /-DIS$/.test(str(v).replace(/\s*-\s*/g,"-").toUpperCase())}
+  function dk(r){return [r.date,r.custId,r.jobNo,r.complaintNo,r.tech].join("|").toLowerCase()}
+
+  function prepImport(rows){
+    pending=[];$("impPrev").innerHTML="";$("impGo").classList.add("hide");
+    if(!rows.length){impMsg("The file has no data rows.");return}
+    var map={};
+    Object.keys(rows[0]).forEach(function(h){var k=normKey(h);Object.keys(ALIAS).forEach(function(f){if(!map[f]&&ALIAS[f].indexOf(k)>=0)map[f]=h})});
+    var miss=["date","tech","custId"].filter(function(f){return !map[f]});
+    if(miss.length){impMsg("Missing column(s): "+miss.join(", ")+". Click Download template to see the expected headings.");return}
+    var seen={},bad=0,dup=0;records.forEach(function(r){seen[dk(r)]=1});
+    rows.forEach(function(row){
+      var g=function(f){return map[f]?row[map[f]]:""};
+      var rec={date:toDate(g("date")),tech:normTech(g("tech")),custId:str(g("custId")),
+        custType:pick(g("custType"),CTYPES)||str(g("custType")),complaintNo:str(g("complaintNo")),jobNo:str(g("jobNo")),
+        wtype:pick(g("wtype"),WT)||str(g("wtype"))||"Inspection",status:normStatus(g("status")),
+        focReason:pick(g("focReason"),FOCR)||str(g("focReason")),
+        parts:parseParts(g("parts")).map(function(p){return p.name+":"+p.qty+":"+p.cost}).join("; "),
+        issues:str(g("issues")),notes:str(g("notes"))};
+      NUMF.forEach(function(k){rec[k]=n(g(k))});
+      if(!str(g("totalCharged")))rec.totalCharged=CH.reduce(function(a,k){return a+rec[k]},0);
+      if(!rec.date||!rec.tech||!rec.custId){bad++;return}
+      var k=dk(rec);if(seen[k]){dup++;return}seen[k]=1;pending.push(rec);
+    });
+    impMsg("Found "+rows.length+" rows: "+pending.length+" ready to import, "+bad+" skipped (missing date, technician or customer ID), "+dup+" skipped as duplicates (same date, customer, job no., complaint no. and technician).");
+    if(pending.length){
+      $("impPrev").innerHTML=tbl(["Date","Technician","Customer ID","Type","Job no.","Status"],
+        pending.slice(0,5).map(function(r){return [r.date,r.tech,r.custId,r.custType,r.jobNo,r.status]}))+
+        (pending.length>5?'<p class="meta">Showing first 5 of '+pending.length+'.</p>':'');
+      $("impGo").textContent="Import "+pending.length+" records";$("impGo").classList.remove("hide");
+    }
+  }
+  $("impFile").onchange=function(){
+    var inp=this,f=inp.files[0];if(!f)return;
+    if(typeof XLSX==="undefined"){impMsg("The Excel reader could not load. Check the internet connection and reload the page.");return}
+    var rd=new FileReader();
+    rd.onload=function(e){
+      try{var wb=XLSX.read(new Uint8Array(e.target.result),{type:"array",cellDates:true});
+        prepImport(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:"",raw:true}));
+      }catch(x){impMsg("Could not read the file: "+x.message)}
+      inp.value="";
+    };
+    rd.readAsArrayBuffer(f);
+  };
+  $("impGo").onclick=async function(){
+    var btn=this,done=0;btn.disabled=true;
+    try{
+      for(var i=0;i<pending.length;i+=200){
+        var chunk=pending.slice(i,i+200);await call("POST",{action:"bulk",records:chunk});
+        done+=chunk.length;impMsg("Imported "+done+" of "+pending.length+"…");
+      }
+      impMsg("Done. Imported "+done+" records.");pending=[];btn.classList.add("hide");$("impPrev").innerHTML="";
+    }catch(e){impMsg("Import stopped after "+done+" records: "+e.message+". Choose the file again to continue; records already saved will be skipped as duplicates.")}
+    btn.disabled=false;load();
+  };
+  $("impTpl").onclick=function(){
+    var ex=["2026-10-23","Nimal Perera","C10452","Household","CMP-1001","JOB-2001","Repair","Cooler Service Done",1.5,2,1,"Warranty Cooler",1,500,1000,700,0,2200,"BIMETAL:2:350; WIRE:1:200","Not cooling","Tested after repair"];
+    if(typeof XLSX!=="undefined"){var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HEAD,ex]),"Visits");XLSX.writeFile(wb,"cooler-log-template.xlsx")}
+    else download("cooler-log-template.csv",HEAD.join(",")+"\n");
+  };
+
+  /* ---------- Dashboard ---------- */
+  var period="day";
+  function range(){
+    var d=parseD($("pDate").value||today()),s,e;
+    if(period==="day"){s=e=d}
+    else if(period==="week"){var dow=(d.getDay()+6)%7;s=new Date(d.getFullYear(),d.getMonth(),d.getDate()-dow);e=new Date(s.getFullYear(),s.getMonth(),s.getDate()+6)}
+    else{s=new Date(d.getFullYear(),d.getMonth(),1);e=new Date(d.getFullYear(),d.getMonth()+1,0)}
+    return {s:s,e:e};
+  }
+  function countBy(arr,fn){var o={};arr.forEach(function(r){var k=fn(r);o[k]=(o[k]||0)+1});return Object.keys(o).map(function(k){return [k,o[k]]}).sort(function(a,b){return b[1]-a[1]})}
+  function bars(items,colorFn){
+    if(!items.length)return '<p class="meta">No data for this period.</p>';
+    var mx=Math.max.apply(null,items.map(function(i){return i[1]}).concat([1]));
+    return items.map(function(i){return '<div class="bar"><span class="bl" title="'+esc(i[0])+'">'+esc(i[0])+'</span><div class="bt"><div class="bf" style="width:'+(i[1]/mx*100)+'%;background:var(--'+(colorFn?colorFn(i[0]):"accent")+')"></div></div><b>'+m(i[1])+'</b></div>'}).join("");
+  }
+  function tbl(head,rows){
+    if(!rows.length)return '<p class="meta">Nothing to show for this period.</p>';
+    return '<table><tr>'+head.map(function(h){return '<th>'+esc(h)+'</th>'}).join("")+'</tr>'+rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+esc(c)+'</td>'}).join("")+'</tr>'}).join("")+'</table>';
+  }
+  function renderDash(){
+    if(!$("pDate").value)$("pDate").value=today();
+    var rg=range(),ds=fmt(rg.s),de=fmt(rg.e),o={day:"numeric",month:"short",year:"numeric"};
+    var rs=records.filter(function(r){return r.date>=ds&&r.date<=de});
+    $("pLabel").textContent=period==="day"?rg.s.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long",year:"numeric"}):
+      period==="week"?rg.s.toLocaleDateString(undefined,o)+" to "+rg.e.toLocaleDateString(undefined,o):rg.s.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+    var pc=rs.reduce(function(a,r){return a+partsCost(parseParts(r.parts))},0);
+    var techs=Array.from(new Set(rs.map(function(r){return r.tech}))).length;
+    var stats=[[rs.length,"Visits"],[sum(rs,"coolers"),"Coolers serviced"],[sum(rs,"foc"),"FOC coolers"],[sum(rs,"chargeable"),"Chargeable coolers"],
+      [m(sum(rs,"totalCharged")),"Total charged"],[m(pc),"Parts cost"],[Math.round(sum(rs,"hours")*100)/100,"Hours worked"],[techs,"Technicians active"]];
+    $("dStats").innerHTML=stats.map(function(s){return '<div class="stat"><b>'+esc(s[0])+'</b><span>'+esc(s[1])+'</span></div>'}).join("");
+
+    $("dTrendCard").classList.toggle("hide",period==="day");
+    var days=[],d=new Date(rg.s),cnt={};
+    while(d<=rg.e){days.push(fmt(d));d.setDate(d.getDate()+1)}
+    rs.forEach(function(r){cnt[r.date]=(cnt[r.date]||0)+1});
+    var mx=Math.max.apply(null,days.map(function(k){return cnt[k]||0}).concat([1]));
+    $("dTrend").innerHTML='<div class="cols">'+days.map(function(k){
+      var c=cnt[k]||0,dd=parseD(k),lab=period==="week"?dd.toLocaleDateString(undefined,{weekday:"short"})+" "+dd.getDate():dd.getDate();
+      return '<div class="col"><span>'+(c||"")+'</span><div class="cv" style="height:'+(c?Math.max(3,c/mx*105):0)+'px"></div><span>'+lab+'</span></div>'}).join("")+'</div>';
+
+    var tm={};
+    rs.forEach(function(r){var t=tm[r.tech]||(tm[r.tech]={v:0,c:0,f:0,ch:0,t:0,h:0});t.v++;t.c+=r.coolers;t.f+=r.foc;t.ch+=r.chargeable;t.t+=r.totalCharged;t.h+=r.hours});
+    $("dTech").innerHTML=tbl(["Technician","Visits","Coolers","FOC","Chargeable","Total charged","Hours"],
+      Object.keys(tm).sort(function(a,b){return tm[b].v-tm[a].v}).map(function(k){var t=tm[k];return [k,t.v,t.c,t.f,t.ch,m(t.t),Math.round(t.h*100)/100]}));
+
+    var dm={},tot={v:0,c:0,f:0,ch:0,t:0};
+    rs.forEach(function(r){if(!isDis(r.tech))return;var b=normTech(r.tech).replace(/-DIS$/,""),t=dm[b]||(dm[b]={v:0,c:0,f:0,ch:0,t:0});
+      [t,tot].forEach(function(x){x.v++;x.c+=r.coolers;x.f+=r.foc;x.ch+=r.chargeable;x.t+=r.totalCharged})});
+    var drows=Object.keys(dm).sort(function(a,b){return dm[b].v-dm[a].v}).map(function(k){var t=dm[k];return [k,t.v,t.c,t.f,t.ch,m(t.t)]});
+    if(drows.length)drows.push(["TOTAL",tot.v,tot.c,tot.f,tot.ch,m(tot.t)]);
+    $("dDis").innerHTML=tbl(["Technician","DIS visits","Coolers","FOC","Chargeable","Total charged"],drows);
+
+    $("dStatus").innerHTML=bars(countBy(rs,function(r){return r.status}),sc);
+    $("dType").innerHTML=bars(countBy(rs,function(r){return r.custType||"Not set"}));
+    var fm={};rs.forEach(function(r){if(r.foc>0){var k=r.focReason||"Not given";fm[k]=(fm[k]||0)+r.foc}});
+    $("dFoc").innerHTML=bars(Object.keys(fm).map(function(k){return [k,fm[k]]}).sort(function(a,b){return b[1]-a[1]}));
+    $("dCharges").innerHTML=tbl(["Charge","Amount"],[["Visiting charges",m(sum(rs,"visitCharge"))],["Service charges",m(sum(rs,"serviceCharge"))],["Spare parts charges",m(sum(rs,"spareCharge"))],["TR rental",m(sum(rs,"trRental"))],["Total charged",m(sum(rs,"totalCharged"))]]);
+
+    var pm={};rs.forEach(function(r){parseParts(r.parts).forEach(function(p){var x=pm[p.name]||(pm[p.name]={q:0,c:0});x.q+=p.qty;x.c+=p.qty*p.cost})});
+    $("dParts").innerHTML=tbl(["Part","Quantity","Cost"],Object.keys(pm).sort(function(a,b){return pm[b].q-pm[a].q}).map(function(k){return [k,pm[k].q,m(pm[k].c)]}));
+
+    var seen={},open=[];
+    rs.forEach(function(r){if(seen[r.custId])return;seen[r.custId]=1;if(OPEN.indexOf(r.status)>=0)open.push([r.custId,r.custType,r.status,r.date,r.jobNo,r.issues])});
+    $("dOpen").innerHTML=tbl(["Customer ID","Type","Status","Last visit","Job no.","Issue"],open);
+  }
+  function shift(dir){
+    var d=parseD($("pDate").value||today());
+    if(period==="day")d.setDate(d.getDate()+dir);else if(period==="week")d.setDate(d.getDate()+7*dir);else d.setMonth(d.getMonth()+dir,1);
+    $("pDate").value=fmt(d);renderDash();
+  }
+  $("pPrev").onclick=function(){shift(-1)};$("pNext").onclick=function(){shift(1)};
+  $("pDate").onchange=renderDash;$("pPrint").onclick=function(){window.print()};
+  $("pTabs").onclick=function(e){var p=e.target.dataset.p;if(!p)return;period=p;
+    document.querySelectorAll("#pTabs button").forEach(function(b){b.classList.toggle("ghost",b.dataset.p!==p)});renderDash()};
+  function showTab(t){
+    $("logView").classList.toggle("hide",t!=="log");$("dashView").classList.toggle("hide",t!=="dash");
+    $("tabLog").classList.toggle("ghost",t!=="log");$("tabDash").classList.toggle("ghost",t!=="dash");
+    if(t==="dash")renderDash();
+  }
+  $("tabLog").onclick=function(){showTab("log")};$("tabDash").onclick=function(){showTab("dash")};
+  $("pDate").value=today();
+
+  pin=lsGet("pin")||"";
+  if(pin){showApp();load()}else showPin("");
+  setInterval(function(){if(!document.hidden&&pin&&!editingId)load()},60000);
+})();
+</script>
+</body>
+</html>
